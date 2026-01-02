@@ -8,7 +8,7 @@ interface FFmpegOutput {
 
 function App() {
   const [selectedFile, setSelectedFile] = useState<{ name: string; path: string } | null>(null)
-  const [isDragging, setIsDragging] = useState(false)
+
   const [command, setCommand] = useState('')
   const [isExecuting, setIsExecuting] = useState(false)
   const [output, setOutput] = useState<string[]>([])
@@ -43,32 +43,7 @@ function App() {
     }
   }, [])
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(true)
-  }
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-    
-    const files = Array.from(e.dataTransfer.files)
-    const mp4File = files.find(file => file.name.toLowerCase().endsWith('.mp4'))
-    
-    if (mp4File && mp4File.path) {
-      setSelectedFile({
-        name: mp4File.name,
-        path: mp4File.path
-      })
-      setStatus('idle')
-      setOutput([])
-    }
-  }
 
   const handleBrowseClick = async () => {
     if (!window.ipcRenderer) return
@@ -140,19 +115,8 @@ function App() {
 
         {/* Main Card */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
-          {/* File Drop Zone */}
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={`
-              relative border-2 border-dashed rounded-xl p-12 mb-6 transition-all duration-300
-              ${isDragging 
-                ? 'border-purple-400 bg-purple-500/20 scale-105' 
-                : 'border-white/30 bg-white/5 hover:bg-white/10'
-              }
-            `}
-          >
+          {/* File Selection */}
+          <div className="relative border-2 border-dashed rounded-xl p-12 mb-6 transition-all duration-300 border-white/30 bg-white/5 hover:bg-white/10">
             <div className="text-center">
               <svg
                 className="mx-auto h-16 w-16 text-purple-300 mb-4"
@@ -167,10 +131,9 @@ function App() {
                   d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                 />
               </svg>
-              <p className="text-xl text-white mb-2">
-                {selectedFile ? selectedFile.name : 'Drop MP4 file here'}
+              <p className="text-xl text-white mb-4">
+                {selectedFile ? selectedFile.name : 'Select MP4 file'}
               </p>
-              <p className="text-blue-200 mb-4">or</p>
               <button
                 onClick={handleBrowseClick}
                 className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
@@ -286,7 +249,7 @@ function App() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-blue-200 text-sm">
-          <p>Powered by FFmpeg • Drag & drop or browse to select MP4 files</p>
+          <p>Powered by FFmpeg • Browse to select MP4 files</p>
         </div>
       </div>
     </div>
