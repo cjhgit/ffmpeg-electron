@@ -6,7 +6,11 @@ interface FFmpegOutput {
   data: string
 }
 
+type FeatureType = 'mp3' | 'compress' | 'convert'
+type VideoFormat = 'mp4' | 'avi' | 'mov' | 'mkv' | 'webm' | 'flv'
+
 function App() {
+  const [selectedFeature, setSelectedFeature] = useState<FeatureType>('mp3')
   const [selectedFile, setSelectedFile] = useState<{ name: string; path: string } | null>(null)
   const [outputPath, setOutputPath] = useState('')
   const [command, setCommand] = useState('')
@@ -14,6 +18,12 @@ function App() {
   const [output, setOutput] = useState<string[]>([])
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [isCopied, setIsCopied] = useState(false)
+  
+  // Video compression settings
+  const [compressionQuality, setCompressionQuality] = useState<'high' | 'medium' | 'low'>('medium')
+  
+  // Format conversion settings
+  const [targetFormat, setTargetFormat] = useState<VideoFormat>('mp4')
 
   // Generate unique filename if file already exists
   const generateUniqueFilename = async (basePath: string): Promise<string> => {
@@ -44,31 +54,65 @@ function App() {
     }
   }
 
-  // Generate FFmpeg command when file or output path changes
+  // Generate FFmpeg command when file, output path, or settings change
   useEffect(() => {
     if (selectedFile && outputPath) {
       console.log('selectedFile', selectedFile)
       const inputPath = selectedFile.path
-      // Add -y flag to automatically overwrite without prompting
-      const cmd = `ffmpeg -y -i "${inputPath}" -vn -acodec libmp3lame -q:a 2 "${outputPath}"`
+      let cmd = ''
+      
+      switch (selectedFeature) {
+        case 'mp3':
+          // Convert to MP3
+          cmd = `ffmpeg -y -i "${inputPath}" -vn -acodec libmp3lame -q:a 2 "${outputPath}"`
+          break
+          
+        case 'compress':
+          // Video compression with different quality levels
+          let crf = '23' // default medium quality
+          if (compressionQuality === 'high') crf = '18' // higher quality, larger file
+          else if (compressionQuality === 'low') crf = '28' // lower quality, smaller file
+          
+          cmd = `ffmpeg -y -i "${inputPath}" -vcodec libx264 -crf ${crf} -preset medium -acodec aac -b:a 128k "${outputPath}"`
+          break
+          
+        case 'convert':
+          // Format conversion
+          cmd = `ffmpeg -y -i "${inputPath}" -c:v libx264 -c:a aac -strict experimental "${outputPath}"`
+          break
+      }
+      
       setCommand(cmd)
     } else {
       setCommand('')
     }
-  }, [selectedFile, outputPath])
+  }, [selectedFile, outputPath, selectedFeature, compressionQuality, targetFormat])
 
-  // Generate unique output path when file is selected
+  // Generate unique output path when file or feature is selected
   useEffect(() => {
     if (selectedFile) {
       const inputPath = selectedFile.path
-      const baseOutputPath = inputPath.replace(/\.mp4$/i, '.mp3')
+      let baseOutputPath = ''
+      
+      switch (selectedFeature) {
+        case 'mp3':
+          baseOutputPath = inputPath.replace(/\.[^.]+$/i, '.mp3')
+          break
+        case 'compress':
+          baseOutputPath = inputPath.replace(/(\.[^.]+)$/i, '-compressed$1')
+          break
+        case 'convert':
+          baseOutputPath = inputPath.replace(/\.[^.]+$/i, `.${targetFormat}`)
+          break
+      }
+      
       generateUniqueFilename(baseOutputPath).then(uniquePath => {
         setOutputPath(uniquePath)
       })
     } else {
       setOutputPath('')
     }
-  }, [selectedFile])
+  }, [selectedFile, selectedFeature, targetFormat])
 
   // Listen for FFmpeg output
   useEffect(() => {
@@ -132,6 +176,29 @@ function App() {
     setStatus('idle')
     setIsCopied(false)
   }
+  
+  const handleFeatureChange = (feature: FeatureType) => {
+    setSelectedFeature(feature)
+    setStatus('idle')
+    setOutput([])
+    setIsCopied(false)
+  }
+  
+  const getFeatureTitle = () => {
+    switch (selectedFeature) {
+      case 'mp3': return 'MP4 to MP3 Converter'
+      case 'compress': return 'Video Compression'
+      case 'convert': return 'Format Conversion'
+    }
+  }
+  
+  const getFeatureDescription = () => {
+    switch (selectedFeature) {
+      case 'mp3': return 'Extract audio from video files'
+      case 'compress': return 'Reduce video file size'
+      case 'convert': return 'Convert between video formats'
+    }
+  }
 
   const handleCopyCommand = async () => {
     if (!command) return
@@ -147,168 +214,295 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-5xl font-bold text-white mb-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400">
             FFmpeg Client
           </h1>
-          <p className="text-blue-200 text-lg">MP4 to MP3 Converter</p>
+          <p className="text-blue-200 text-lg">{getFeatureTitle()}</p>
+          <p className="text-blue-300 text-sm mt-1">{getFeatureDescription()}</p>
         </div>
 
-        {/* Main Card */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
-          {/* File Selection */}
-          <div className="relative border-2 border-dashed rounded-xl p-12 mb-6 transition-all duration-300 border-white/30 bg-white/5 hover:bg-white/10">
-            <div className="text-center">
-              <svg
-                className="mx-auto h-16 w-16 text-purple-300 mb-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                />
-              </svg>
-              <p className="text-xl text-white mb-4">
-                {selectedFile ? selectedFile.name : 'Select MP4 file'}
-              </p>
-              <button
-                onClick={handleBrowseClick}
-                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
-              >
-                Browse Files
-              </button>
-            </div>
-          </div>
-
-          {/* Output Path Input */}
-          {selectedFile && (
-            <div className="mb-6 animate-fadeIn">
-              <label className="block text-white font-semibold mb-2 text-sm uppercase tracking-wide">
-                Output File Path
-              </label>
-              <input
-                type="text"
-                value={outputPath}
-                onChange={(e) => setOutputPath(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-900/50 border border-purple-500/30 rounded-lg text-white font-mono text-sm focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 transition-all"
-                placeholder="输出文件路径"
-              />
-            </div>
-          )}
-
-          {/* Command Preview */}
-          {command && (
-            <div className="mb-6 animate-fadeIn">
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-white font-semibold text-sm uppercase tracking-wide">
-                  Command Preview
-                </label>
+        <div className="flex gap-6">
+          {/* Left Sidebar - Feature Selection */}
+          <div className="w-64 flex-shrink-0">
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20 sticky top-8">
+              <h2 className="text-white font-bold text-lg mb-4 uppercase tracking-wide">功能选择</h2>
+              <div className="space-y-3">
                 <button
-                  onClick={handleCopyCommand}
-                  className="px-4 py-2 bg-blue-500/80 hover:bg-blue-600 text-white text-sm rounded-lg transition-all duration-200 flex items-center gap-2"
+                  onClick={() => handleFeatureChange('mp3')}
+                  className={`
+                    w-full px-4 py-3 rounded-lg font-semibold text-left transition-all duration-300 transform hover:scale-105
+                    ${selectedFeature === 'mp3'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                      : 'bg-white/5 text-white/70 hover:bg-white/10'
+                    }
+                  `}
                 >
-                  {isCopied ? (
-                    <>
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      已复制
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                      复制命令
-                    </>
-                  )}
+                  🎵 转换为 MP3
+                </button>
+                
+                <button
+                  onClick={() => handleFeatureChange('compress')}
+                  className={`
+                    w-full px-4 py-3 rounded-lg font-semibold text-left transition-all duration-300 transform hover:scale-105
+                    ${selectedFeature === 'compress'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                      : 'bg-white/5 text-white/70 hover:bg-white/10'
+                    }
+                  `}
+                >
+                  📦 视频压缩
+                </button>
+                
+                <button
+                  onClick={() => handleFeatureChange('convert')}
+                  className={`
+                    w-full px-4 py-3 rounded-lg font-semibold text-left transition-all duration-300 transform hover:scale-105
+                    ${selectedFeature === 'convert'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                      : 'bg-white/5 text-white/70 hover:bg-white/10'
+                    }
+                  `}
+                >
+                  🔄 格式转换
                 </button>
               </div>
-              <div className="bg-gray-900/50 rounded-lg p-4 border border-purple-500/30">
-                <code className="text-green-300 text-sm font-mono break-all">
-                  {command}
-                </code>
-              </div>
             </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex gap-4 mb-6">
-            <button
-              onClick={handleExecute}
-              disabled={!command || isExecuting}
-              className={`
-                flex-1 px-6 py-4 rounded-lg font-bold text-lg transition-all duration-300 transform
-                ${command && !isExecuting
-                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 hover:scale-105 shadow-lg hover:shadow-green-500/50'
-                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                }
-              `}
-            >
-              {isExecuting ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Converting...
-                </span>
-              ) : (
-                '▶ Execute'
-              )}
-            </button>
-            
-            <button
-              onClick={handleReset}
-              disabled={isExecuting}
-              className={`
-                px-6 py-4 rounded-lg font-bold text-lg transition-all duration-300 transform
-                ${!isExecuting
-                  ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600 hover:scale-105 shadow-lg hover:shadow-red-500/50'
-                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                }
-              `}
-            >
-              Reset
-            </button>
           </div>
 
-          {/* Status Indicator */}
-          {status !== 'idle' && (
-            <div className={`
-              p-4 rounded-lg mb-6 animate-fadeIn
-              ${status === 'success' ? 'bg-green-500/20 border border-green-500/50' : 'bg-red-500/20 border border-red-500/50'}
-            `}>
-              <p className={`font-semibold ${status === 'success' ? 'text-green-300' : 'text-red-300'}`}>
-                {status === 'success' ? '✓ Conversion completed successfully!' : '✗ Conversion failed'}
-              </p>
-            </div>
-          )}
-
-          {/* Output Console */}
-          {output.length > 0 && (
-            <div className="animate-fadeIn">
-              <label className="block text-white font-semibold mb-2 text-sm uppercase tracking-wide">
-                Output
-              </label>
-              <div className="bg-gray-900/70 rounded-lg p-4 max-h-64 overflow-y-auto border border-purple-500/30">
-                <pre className="text-gray-300 text-xs font-mono whitespace-pre-wrap">
-                  {output.join('')}
-                </pre>
+          {/* Main Content */}
+          <div className="flex-1">
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
+              {/* File Selection */}
+              <div className="relative border-2 border-dashed rounded-xl p-12 mb-6 transition-all duration-300 border-white/30 bg-white/5 hover:bg-white/10">
+                <div className="text-center">
+                  <svg
+                    className="mx-auto h-16 w-16 text-purple-300 mb-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    />
+                  </svg>
+                  <p className="text-xl text-white mb-4">
+                    {selectedFile ? selectedFile.name : '选择视频文件'}
+                  </p>
+                  <button
+                    onClick={handleBrowseClick}
+                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                  >
+                    浏览文件
+                  </button>
+                </div>
               </div>
+
+              {/* Feature-specific Settings */}
+              {selectedFile && selectedFeature === 'compress' && (
+                <div className="mb-6 animate-fadeIn">
+                  <label className="block text-white font-semibold mb-3 text-sm uppercase tracking-wide">
+                    压缩质量
+                  </label>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setCompressionQuality('high')}
+                      className={`
+                        flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-300
+                        ${compressionQuality === 'high'
+                          ? 'bg-green-500 text-white shadow-lg'
+                          : 'bg-white/10 text-white/70 hover:bg-white/20'
+                        }
+                      `}
+                    >
+                      高质量
+                      <div className="text-xs mt-1 opacity-80">文件较大</div>
+                    </button>
+                    <button
+                      onClick={() => setCompressionQuality('medium')}
+                      className={`
+                        flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-300
+                        ${compressionQuality === 'medium'
+                          ? 'bg-blue-500 text-white shadow-lg'
+                          : 'bg-white/10 text-white/70 hover:bg-white/20'
+                        }
+                      `}
+                    >
+                      中等质量
+                      <div className="text-xs mt-1 opacity-80">推荐</div>
+                    </button>
+                    <button
+                      onClick={() => setCompressionQuality('low')}
+                      className={`
+                        flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-300
+                        ${compressionQuality === 'low'
+                          ? 'bg-orange-500 text-white shadow-lg'
+                          : 'bg-white/10 text-white/70 hover:bg-white/20'
+                        }
+                      `}
+                    >
+                      低质量
+                      <div className="text-xs mt-1 opacity-80">文件最小</div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {selectedFile && selectedFeature === 'convert' && (
+                <div className="mb-6 animate-fadeIn">
+                  <label className="block text-white font-semibold mb-3 text-sm uppercase tracking-wide">
+                    目标格式
+                  </label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {(['mp4', 'avi', 'mov', 'mkv', 'webm', 'flv'] as VideoFormat[]).map(format => (
+                      <button
+                        key={format}
+                        onClick={() => setTargetFormat(format)}
+                        className={`
+                          px-4 py-3 rounded-lg font-semibold uppercase transition-all duration-300 transform hover:scale-105
+                          ${targetFormat === format
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                            : 'bg-white/10 text-white/70 hover:bg-white/20'
+                          }
+                        `}
+                      >
+                        {format}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Output Path Input */}
+              {selectedFile && (
+                <div className="mb-6 animate-fadeIn">
+                  <label className="block text-white font-semibold mb-2 text-sm uppercase tracking-wide">
+                    输出文件路径
+                  </label>
+                  <input
+                    type="text"
+                    value={outputPath}
+                    onChange={(e) => setOutputPath(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-900/50 border border-purple-500/30 rounded-lg text-white font-mono text-sm focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 transition-all"
+                    placeholder="输出文件路径"
+                  />
+                </div>
+              )}
+
+              {/* Command Preview */}
+              {command && (
+                <div className="mb-6 animate-fadeIn">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-white font-semibold text-sm uppercase tracking-wide">
+                      命令预览
+                    </label>
+                    <button
+                      onClick={handleCopyCommand}
+                      className="px-4 py-2 bg-blue-500/80 hover:bg-blue-600 text-white text-sm rounded-lg transition-all duration-200 flex items-center gap-2"
+                    >
+                      {isCopied ? (
+                        <>
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          已复制
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                          复制命令
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="bg-gray-900/50 rounded-lg p-4 border border-purple-500/30">
+                    <code className="text-green-300 text-sm font-mono break-all">
+                      {command}
+                    </code>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-4 mb-6">
+                <button
+                  onClick={handleExecute}
+                  disabled={!command || isExecuting}
+                  className={`
+                    flex-1 px-6 py-4 rounded-lg font-bold text-lg transition-all duration-300 transform
+                    ${command && !isExecuting
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 hover:scale-105 shadow-lg hover:shadow-green-500/50'
+                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                    }
+                  `}
+                >
+                  {isExecuting ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      处理中...
+                    </span>
+                  ) : (
+                    '▶ 执行'
+                  )}
+                </button>
+                
+                <button
+                  onClick={handleReset}
+                  disabled={isExecuting}
+                  className={`
+                    px-6 py-4 rounded-lg font-bold text-lg transition-all duration-300 transform
+                    ${!isExecuting
+                      ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600 hover:scale-105 shadow-lg hover:shadow-red-500/50'
+                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                    }
+                  `}
+                >
+                  重置
+                </button>
+              </div>
+
+              {/* Status Indicator */}
+              {status !== 'idle' && (
+                <div className={`
+                  p-4 rounded-lg mb-6 animate-fadeIn
+                  ${status === 'success' ? 'bg-green-500/20 border border-green-500/50' : 'bg-red-500/20 border border-red-500/50'}
+                `}>
+                  <p className={`font-semibold ${status === 'success' ? 'text-green-300' : 'text-red-300'}`}>
+                    {status === 'success' ? '✓ 转换成功完成！' : '✗ 转换失败'}
+                  </p>
+                </div>
+              )}
+
+              {/* Output Console */}
+              {output.length > 0 && (
+                <div className="animate-fadeIn">
+                  <label className="block text-white font-semibold mb-2 text-sm uppercase tracking-wide">
+                    输出日志
+                  </label>
+                  <div className="bg-gray-900/70 rounded-lg p-4 max-h-64 overflow-y-auto border border-purple-500/30">
+                    <pre className="text-gray-300 text-xs font-mono whitespace-pre-wrap">
+                      {output.join('')}
+                    </pre>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Footer */}
         <div className="text-center mt-8 text-blue-200 text-sm">
-          <p>Powered by FFmpeg • Browse to select MP4 files</p>
+          <p>Powered by FFmpeg • 选择功能开始处理视频文件</p>
         </div>
       </div>
     </div>
