@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import './App.css'
 
 interface FFmpegOutput {
@@ -10,6 +11,7 @@ type FeatureType = 'mp3' | 'compress' | 'convert'
 type VideoFormat = 'mp4' | 'avi' | 'mov' | 'mkv' | 'webm' | 'flv'
 
 function App() {
+  const { t, i18n } = useTranslation()
   const [selectedFeature, setSelectedFeature] = useState<FeatureType>('mp3')
   const [selectedFile, setSelectedFile] = useState<{ name: string; path: string } | null>(null)
   const [outputPath, setOutputPath] = useState('')
@@ -186,18 +188,23 @@ function App() {
   
   const getFeatureTitle = () => {
     switch (selectedFeature) {
-      case 'mp3': return 'MP4 to MP3 Converter'
-      case 'compress': return 'Video Compression'
-      case 'convert': return 'Format Conversion'
+      case 'mp3': return t('features.mp3.title')
+      case 'compress': return t('features.compress.title')
+      case 'convert': return t('features.convert.title')
     }
   }
   
   const getFeatureDescription = () => {
     switch (selectedFeature) {
-      case 'mp3': return 'Extract audio from video files'
-      case 'compress': return 'Reduce video file size'
-      case 'convert': return 'Convert between video formats'
+      case 'mp3': return t('features.mp3.description')
+      case 'compress': return t('features.compress.description')
+      case 'convert': return t('features.convert.description')
     }
+  }
+  
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'zh' ? 'en' : 'zh'
+    i18n.changeLanguage(newLang)
   }
 
   const handleCopyCommand = async () => {
@@ -217,9 +224,18 @@ function App() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-white mb-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400">
-            FFmpeg Client
-          </h1>
+          <div className="flex items-center justify-center gap-4 mb-2">
+            <h1 className="text-5xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400">
+              {t('app.title')}
+            </h1>
+            <button
+              onClick={toggleLanguage}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 border border-white/20"
+              title={t('language.switch')}
+            >
+              {i18n.language === 'zh' ? '🇨🇳 中文' : '🇺🇸 EN'}
+            </button>
+          </div>
           <p className="text-blue-200 text-lg">{getFeatureTitle()}</p>
           <p className="text-blue-300 text-sm mt-1">{getFeatureDescription()}</p>
         </div>
@@ -228,7 +244,7 @@ function App() {
           {/* Left Sidebar - Feature Selection */}
           <div className="w-64 flex-shrink-0">
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20 sticky top-8">
-              <h2 className="text-white font-bold text-lg mb-4 uppercase tracking-wide">功能选择</h2>
+              <h2 className="text-white font-bold text-lg mb-4 uppercase tracking-wide">{t('ui.featureSelection')}</h2>
               <div className="space-y-3">
                 <button
                   onClick={() => handleFeatureChange('mp3')}
@@ -240,7 +256,7 @@ function App() {
                     }
                   `}
                 >
-                  🎵 转换为 MP3
+                  {t('features.mp3.button')}
                 </button>
                 
                 <button
@@ -253,7 +269,7 @@ function App() {
                     }
                   `}
                 >
-                  📦 视频压缩
+                  {t('features.compress.button')}
                 </button>
                 
                 <button
@@ -266,7 +282,7 @@ function App() {
                     }
                   `}
                 >
-                  🔄 格式转换
+                  {t('features.convert.button')}
                 </button>
               </div>
             </div>
@@ -292,13 +308,13 @@ function App() {
                     />
                   </svg>
                   <p className="text-xl text-white mb-4">
-                    {selectedFile ? selectedFile.name : '选择视频文件'}
+                    {selectedFile ? selectedFile.name : t('ui.selectFile')}
                   </p>
                   <button
                     onClick={handleBrowseClick}
                     className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
                   >
-                    浏览文件
+                    {t('ui.browseFile')}
                   </button>
                 </div>
               </div>
@@ -307,7 +323,7 @@ function App() {
               {selectedFile && selectedFeature === 'compress' && (
                 <div className="mb-6 animate-fadeIn">
                   <label className="block text-white font-semibold mb-3 text-sm uppercase tracking-wide">
-                    压缩质量
+                    {t('ui.compressionQuality')}
                   </label>
                   <div className="flex gap-3">
                     <button
@@ -320,8 +336,8 @@ function App() {
                         }
                       `}
                     >
-                      高质量
-                      <div className="text-xs mt-1 opacity-80">文件较大</div>
+                      {t('quality.high')}
+                      <div className="text-xs mt-1 opacity-80">{t('quality.highDesc')}</div>
                     </button>
                     <button
                       onClick={() => setCompressionQuality('medium')}
@@ -333,8 +349,8 @@ function App() {
                         }
                       `}
                     >
-                      中等质量
-                      <div className="text-xs mt-1 opacity-80">推荐</div>
+                      {t('quality.medium')}
+                      <div className="text-xs mt-1 opacity-80">{t('quality.mediumDesc')}</div>
                     </button>
                     <button
                       onClick={() => setCompressionQuality('low')}
@@ -346,8 +362,8 @@ function App() {
                         }
                       `}
                     >
-                      低质量
-                      <div className="text-xs mt-1 opacity-80">文件最小</div>
+                      {t('quality.low')}
+                      <div className="text-xs mt-1 opacity-80">{t('quality.lowDesc')}</div>
                     </button>
                   </div>
                 </div>
@@ -356,7 +372,7 @@ function App() {
               {selectedFile && selectedFeature === 'convert' && (
                 <div className="mb-6 animate-fadeIn">
                   <label className="block text-white font-semibold mb-3 text-sm uppercase tracking-wide">
-                    目标格式
+                    {t('ui.targetFormat')}
                   </label>
                   <div className="grid grid-cols-3 gap-3">
                     {(['mp4', 'avi', 'mov', 'mkv', 'webm', 'flv'] as VideoFormat[]).map(format => (
@@ -382,14 +398,14 @@ function App() {
               {selectedFile && (
                 <div className="mb-6 animate-fadeIn">
                   <label className="block text-white font-semibold mb-2 text-sm uppercase tracking-wide">
-                    输出文件路径
+                    {t('ui.outputPath')}
                   </label>
                   <input
                     type="text"
                     value={outputPath}
                     onChange={(e) => setOutputPath(e.target.value)}
                     className="w-full px-4 py-3 bg-gray-900/50 border border-purple-500/30 rounded-lg text-white font-mono text-sm focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 transition-all"
-                    placeholder="输出文件路径"
+                    placeholder={t('ui.outputPath')}
                   />
                 </div>
               )}
@@ -399,7 +415,7 @@ function App() {
                 <div className="mb-6 animate-fadeIn">
                   <div className="flex justify-between items-center mb-2">
                     <label className="block text-white font-semibold text-sm uppercase tracking-wide">
-                      命令预览
+                      {t('ui.commandPreview')}
                     </label>
                     <button
                       onClick={handleCopyCommand}
@@ -410,14 +426,14 @@ function App() {
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
-                          已复制
+                          {t('ui.copied')}
                         </>
                       ) : (
                         <>
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                           </svg>
-                          复制命令
+                          {t('ui.copyCommand')}
                         </>
                       )}
                     </button>
@@ -449,10 +465,10 @@ function App() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      处理中...
+                      {t('ui.executing')}
                     </span>
                   ) : (
-                    '▶ 执行'
+                    t('ui.execute')
                   )}
                 </button>
                 
@@ -467,7 +483,7 @@ function App() {
                     }
                   `}
                 >
-                  重置
+                  {t('ui.reset')}
                 </button>
               </div>
 
@@ -478,7 +494,7 @@ function App() {
                   ${status === 'success' ? 'bg-green-500/20 border border-green-500/50' : 'bg-red-500/20 border border-red-500/50'}
                 `}>
                   <p className={`font-semibold ${status === 'success' ? 'text-green-300' : 'text-red-300'}`}>
-                    {status === 'success' ? '✓ 转换成功完成！' : '✗ 转换失败'}
+                    {status === 'success' ? t('status.success') : t('status.error')}
                   </p>
                 </div>
               )}
@@ -487,7 +503,7 @@ function App() {
               {output.length > 0 && (
                 <div className="animate-fadeIn">
                   <label className="block text-white font-semibold mb-2 text-sm uppercase tracking-wide">
-                    输出日志
+                    {t('ui.outputLog')}
                   </label>
                   <div className="bg-gray-900/70 rounded-lg p-4 max-h-64 overflow-y-auto border border-purple-500/30">
                     <pre className="text-gray-300 text-xs font-mono whitespace-pre-wrap">
@@ -502,7 +518,7 @@ function App() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-blue-200 text-sm">
-          <p>Powered by FFmpeg • 选择功能开始处理视频文件</p>
+          <p>{t('app.footer')}</p>
         </div>
       </div>
     </div>

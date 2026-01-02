@@ -1,0 +1,56 @@
+{
+  "app": {
+    "title": "FFmpeg 客户端",
+    "footer": "Powered by FFmpeg • 选择功能开始处理视频文件"
+  },
+  "features": {
+    "mp3": {
+      "title": "MP4 转 MP3 转换器",
+      "description": "从视频文件中提取音频",
+      "button": "🎵 转换为 MP3"
+    },
+    "compress": {
+      "title": "视频压缩",
+      "description": "减小视频文件大小",
+      "button": "📦 视频压缩"
+    },
+    "convert": {
+      "title": "格式转换",
+      "description": "在不同视频格式之间转换",
+      "button": "🔄 格式转换"
+    }
+  },
+  "ui": {
+    "featureSelection": "功能选择",
+    "selectFile": "选择视频文件",
+    "browseFile": "浏览文件",
+    "outputPath": "输出文件路径",
+    "commandPreview": "命令预览",
+    "copyCommand": "复制命令",
+    "copied": "已复制",
+    "execute": "▶ 执行",
+    "executing": "处理中...",
+    "reset": "重置",
+    "outputLog": "输出日志",
+    "compressionQuality": "压缩质量",
+    "targetFormat": "目标格式"
+  },
+  "quality": {
+    "high": "高质量",
+    "highDesc": "文件较大",
+    "medium": "中等质量",
+    "mediumDesc": "推荐",
+    "low": "低质量",
+    "lowDesc": "文件最小"
+  },
+  "status": {
+    "success": "✓ 转换成功完成！",
+    "error": "✗ 转换失败"
+  },
+  "language": {
+    "switch": "切换语言",
+    "zh": "中文",
+    "en": "English"
+  }
+}
+

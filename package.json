@@ -21,7 +21,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.3.9",
+    "i18next": "^25.7.3",
+    "react-i18next": "^16.5.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.2",

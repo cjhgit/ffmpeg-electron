@@ -1,0 +1,56 @@
+{
+  "app": {
+    "title": "FFmpeg Client",
+    "footer": "Powered by FFmpeg • Select a feature to start processing video files"
+  },
+  "features": {
+    "mp3": {
+      "title": "MP4 to MP3 Converter",
+      "description": "Extract audio from video files",
+      "button": "🎵 Convert to MP3"
+    },
+    "compress": {
+      "title": "Video Compression",
+      "description": "Reduce video file size",
+      "button": "📦 Video Compression"
+    },
+    "convert": {
+      "title": "Format Conversion",
+      "description": "Convert between video formats",
+      "button": "🔄 Format Conversion"
+    }
+  },
+  "ui": {
+    "featureSelection": "Feature Selection",
+    "selectFile": "Select Video File",
+    "browseFile": "Browse File",
+    "outputPath": "Output File Path",
+    "commandPreview": "Command Preview",
+    "copyCommand": "Copy Command",
+    "copied": "Copied",
+    "execute": "▶ Execute",
+    "executing": "Processing...",
+    "reset": "Reset",
+    "outputLog": "Output Log",
+    "compressionQuality": "Compression Quality",
+    "targetFormat": "Target Format"
+  },
+  "quality": {
+    "high": "High Quality",
+    "highDesc": "Larger file",
+    "medium": "Medium Quality",
+    "mediumDesc": "Recommended",
+    "low": "Low Quality",
+    "lowDesc": "Smallest file"
+  },
+  "status": {
+    "success": "✓ Conversion completed successfully!",
+    "error": "✗ Conversion failed"
+  },
+  "language": {
+    "switch": "Switch Language",
+    "zh": "中文",
+    "en": "English"
+  }
+}
+
