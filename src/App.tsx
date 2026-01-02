@@ -8,23 +8,65 @@ interface FFmpegOutput {
 
 function App() {
   const [selectedFile, setSelectedFile] = useState<{ name: string; path: string } | null>(null)
-
+  const [outputPath, setOutputPath] = useState('')
   const [command, setCommand] = useState('')
   const [isExecuting, setIsExecuting] = useState(false)
   const [output, setOutput] = useState<string[]>([])
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [isCopied, setIsCopied] = useState(false)
 
-  // Generate FFmpeg command when file is selected
+  // Generate unique filename if file already exists
+  const generateUniqueFilename = async (basePath: string): Promise<string> => {
+    if (!window.ipcRenderer) return basePath
+    
+    try {
+      let counter = 1
+      let testPath = basePath
+      
+      // Extract directory, filename without extension, and extension
+      const lastSlash = basePath.lastIndexOf('/')
+      const dir = basePath.substring(0, lastSlash)
+      const fullFilename = basePath.substring(lastSlash + 1)
+      const lastDot = fullFilename.lastIndexOf('.')
+      const filename = lastDot > 0 ? fullFilename.substring(0, lastDot) : fullFilename
+      const ext = lastDot > 0 ? fullFilename.substring(lastDot) : ''
+      
+      // Keep incrementing counter until we find a non-existing filename
+      while (await window.ipcRenderer.invoke('check-file-exists', testPath)) {
+        counter++
+        testPath = `${dir}/${filename}-${counter}${ext}`
+      }
+      
+      return testPath
+    } catch (error) {
+      console.error('Error checking file existence:', error)
+      return basePath
+    }
+  }
+
+  // Generate FFmpeg command when file or output path changes
   useEffect(() => {
-    if (selectedFile) {
+    if (selectedFile && outputPath) {
       console.log('selectedFile', selectedFile)
       const inputPath = selectedFile.path
-      const outputPath = inputPath.replace(/\.mp4$/i, '.mp3')
-      const cmd = `ffmpeg -i "${inputPath}" -vn -acodec libmp3lame -q:a 2 "${outputPath}"`
+      // Add -y flag to automatically overwrite without prompting
+      const cmd = `ffmpeg -y -i "${inputPath}" -vn -acodec libmp3lame -q:a 2 "${outputPath}"`
       setCommand(cmd)
     } else {
       setCommand('')
+    }
+  }, [selectedFile, outputPath])
+
+  // Generate unique output path when file is selected
+  useEffect(() => {
+    if (selectedFile) {
+      const inputPath = selectedFile.path
+      const baseOutputPath = inputPath.replace(/\.mp4$/i, '.mp3')
+      generateUniqueFilename(baseOutputPath).then(uniquePath => {
+        setOutputPath(uniquePath)
+      })
+    } else {
+      setOutputPath('')
     }
   }, [selectedFile])
 
@@ -84,6 +126,7 @@ function App() {
 
   const handleReset = () => {
     setSelectedFile(null)
+    setOutputPath('')
     setCommand('')
     setOutput([])
     setStatus('idle')
@@ -142,6 +185,22 @@ function App() {
               </button>
             </div>
           </div>
+
+          {/* Output Path Input */}
+          {selectedFile && (
+            <div className="mb-6 animate-fadeIn">
+              <label className="block text-white font-semibold mb-2 text-sm uppercase tracking-wide">
+                Output File Path
+              </label>
+              <input
+                type="text"
+                value={outputPath}
+                onChange={(e) => setOutputPath(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-900/50 border border-purple-500/30 rounded-lg text-white font-mono text-sm focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 transition-all"
+                placeholder="输出文件路径"
+              />
+            </div>
+          )}
 
           {/* Command Preview */}
           {command && (

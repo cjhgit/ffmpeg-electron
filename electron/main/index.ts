@@ -140,6 +140,12 @@ ipcMain.handle('select-file', async () => {
   return result.filePaths[0]
 })
 
+// Check if file exists handler
+ipcMain.handle('check-file-exists', async (_, filePath: string) => {
+  const { existsSync } = await import('node:fs')
+  return existsSync(filePath)
+})
+
 // Helper function to parse command string with quoted arguments
 function parseCommand(command: string): string[] {
   const args: string[] = []
