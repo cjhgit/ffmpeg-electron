@@ -7,8 +7,9 @@ interface FFmpegOutput {
   data: string
 }
 
-type FeatureType = 'mp3' | 'compress' | 'convert' | 'clip'
+type FeatureType = 'mp3' | 'compress' | 'convert' | 'clip' | 'resize'
 type VideoFormat = 'mp4' | 'avi' | 'mov' | 'mkv' | 'webm' | 'flv'
+type ResolutionType = '1080p' | '720p' | '480p' | '360p'
 
 function App() {
   const { t, i18n } = useTranslation()
@@ -30,6 +31,9 @@ function App() {
   // Video clip settings
   const [clipStartTime, setClipStartTime] = useState('')
   const [clipEndTime, setClipEndTime] = useState('')
+  
+  // Video resize settings
+  const [targetResolution, setTargetResolution] = useState<ResolutionType>('1080p')
 
   // Generate unique filename if file already exists
   const generateUniqueFilename = async (basePath: string): Promise<string> => {
@@ -103,13 +107,24 @@ function App() {
           }
           cmd = `ffmpeg -y ${timeParams}-i "${inputPath}" -c:v libx264 -c:a aac "${outputPath}"`
           break
+          
+        case 'resize':
+          // Resize video to target resolution while maintaining aspect ratio
+          let height = '1080' // default 1080p
+          if (targetResolution === '720p') height = '720'
+          else if (targetResolution === '480p') height = '480'
+          else if (targetResolution === '360p') height = '360'
+          
+          // Use scale filter with -1 to maintain aspect ratio
+          cmd = `ffmpeg -y -i "${inputPath}" -vf "scale=-2:${height}" -c:v libx264 -crf 23 -preset medium -c:a aac "${outputPath}"`
+          break
       }
       
       setCommand(cmd)
     } else {
       setCommand('')
     }
-  }, [selectedFile, outputPath, selectedFeature, compressionQuality, targetFormat, clipStartTime, clipEndTime])
+  }, [selectedFile, outputPath, selectedFeature, compressionQuality, targetFormat, clipStartTime, clipEndTime, targetResolution])
 
   // Generate unique output path when file or feature is selected
   useEffect(() => {
@@ -130,6 +145,9 @@ function App() {
         case 'clip':
           baseOutputPath = inputPath.replace(/(\.[^.]+)$/i, '-clipped$1')
           break
+        case 'resize':
+          baseOutputPath = inputPath.replace(/(\.[^.]+)$/i, `-${targetResolution}$1`)
+          break
       }
       
       generateUniqueFilename(baseOutputPath).then(uniquePath => {
@@ -138,7 +156,7 @@ function App() {
     } else {
       setOutputPath('')
     }
-  }, [selectedFile, selectedFeature, targetFormat])
+  }, [selectedFile, selectedFeature, targetFormat, targetResolution])
 
   // Listen for FFmpeg output
   useEffect(() => {
@@ -216,6 +234,7 @@ function App() {
       case 'compress': return t('features.compress.title')
       case 'convert': return t('features.convert.title')
       case 'clip': return t('features.clip.title')
+      case 'resize': return t('features.resize.title')
     }
   }
   
@@ -225,6 +244,7 @@ function App() {
       case 'compress': return t('features.compress.description')
       case 'convert': return t('features.convert.description')
       case 'clip': return t('features.clip.description')
+      case 'resize': return t('features.resize.description')
     }
   }
   
@@ -322,6 +342,19 @@ function App() {
                   `}
                 >
                   {t('features.clip.button')}
+                </button>
+                
+                <button
+                  onClick={() => handleFeatureChange('resize')}
+                  className={`
+                    w-full px-4 py-3 rounded-lg font-semibold text-left transition-all duration-300 transform hover:scale-105
+                    ${selectedFeature === 'resize'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                      : 'bg-white/5 text-white/70 hover:bg-white/10'
+                    }
+                  `}
+                >
+                  {t('features.resize.button')}
                 </button>
               </div>
             </div>
@@ -466,6 +499,40 @@ function App() {
                       <p className="text-xs text-white/50 mt-1">{t('ui.timeFormatHint')}</p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {selectedFile && selectedFeature === 'resize' && (
+                <div className="mb-6 animate-fadeIn">
+                  <label className="block text-white font-semibold mb-3 text-sm uppercase tracking-wide">
+                    {t('ui.targetResolution')}
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {(['1080p', '720p', '480p', '360p'] as ResolutionType[]).map(resolution => (
+                      <button
+                        key={resolution}
+                        onClick={() => setTargetResolution(resolution)}
+                        className={`
+                          px-6 py-4 rounded-lg font-semibold uppercase transition-all duration-300 transform hover:scale-105
+                          ${targetResolution === resolution
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                            : 'bg-white/10 text-white/70 hover:bg-white/20'
+                          }
+                        `}
+                      >
+                        <div className="text-lg">{resolution}</div>
+                        <div className="text-xs mt-1 opacity-80">
+                          {resolution === '1080p' && '1920x1080'}
+                          {resolution === '720p' && '1280x720'}
+                          {resolution === '480p' && '854x480'}
+                          {resolution === '360p' && '640x360'}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-white/60 mt-3">
+                    {t('ui.resizeHint')}
+                  </p>
                 </div>
               )}
 

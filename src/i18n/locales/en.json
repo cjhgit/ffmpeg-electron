@@ -23,6 +23,11 @@
       "title": "Video Clip",
       "description": "Cut video segments with specified time range",
       "button": "✂️ Video Clip"
+    },
+    "resize": {
+      "title": "Resize Resolution",
+      "description": "Adjust video resolution while maintaining aspect ratio",
+      "button": "📐 Resize Resolution"
     }
   },
   "ui": {
@@ -39,10 +44,12 @@
     "outputLog": "Output Log",
     "compressionQuality": "Compression Quality",
     "targetFormat": "Target Format",
+    "targetResolution": "Target Resolution",
     "clipSettings": "Clip Settings",
     "startTime": "Start Time",
     "endTime": "End Time",
-    "timeFormatHint": "Format: HH:MM:SS or seconds"
+    "timeFormatHint": "Format: HH:MM:SS or seconds",
+    "resizeHint": "* Width will be automatically adjusted to maintain original aspect ratio"
   },
   "quality": {
     "high": "High Quality",
