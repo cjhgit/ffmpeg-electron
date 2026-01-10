@@ -7,7 +7,7 @@ interface FFmpegOutput {
   data: string
 }
 
-type FeatureType = 'mp3' | 'compress' | 'convert'
+type FeatureType = 'mp3' | 'compress' | 'convert' | 'clip'
 type VideoFormat = 'mp4' | 'avi' | 'mov' | 'mkv' | 'webm' | 'flv'
 
 function App() {
@@ -26,6 +26,10 @@ function App() {
   
   // Format conversion settings
   const [targetFormat, setTargetFormat] = useState<VideoFormat>('mp4')
+  
+  // Video clip settings
+  const [clipStartTime, setClipStartTime] = useState('')
+  const [clipEndTime, setClipEndTime] = useState('')
 
   // Generate unique filename if file already exists
   const generateUniqueFilename = async (basePath: string): Promise<string> => {
@@ -82,13 +86,30 @@ function App() {
           // Format conversion
           cmd = `ffmpeg -y -i "${inputPath}" -c:v libx264 -c:a aac -strict experimental "${outputPath}"`
           break
+          
+        case 'clip':
+          // Video clip with time range
+          let timeParams = ''
+          if (clipStartTime) {
+            timeParams += `-ss ${clipStartTime} `
+          }
+          if (clipEndTime) {
+            if (clipStartTime) {
+              // Calculate duration from start to end
+              timeParams += `-to ${clipEndTime} `
+            } else {
+              timeParams += `-to ${clipEndTime} `
+            }
+          }
+          cmd = `ffmpeg -y ${timeParams}-i "${inputPath}" -c:v libx264 -c:a aac "${outputPath}"`
+          break
       }
       
       setCommand(cmd)
     } else {
       setCommand('')
     }
-  }, [selectedFile, outputPath, selectedFeature, compressionQuality, targetFormat])
+  }, [selectedFile, outputPath, selectedFeature, compressionQuality, targetFormat, clipStartTime, clipEndTime])
 
   // Generate unique output path when file or feature is selected
   useEffect(() => {
@@ -105,6 +126,9 @@ function App() {
           break
         case 'convert':
           baseOutputPath = inputPath.replace(/\.[^.]+$/i, `.${targetFormat}`)
+          break
+        case 'clip':
+          baseOutputPath = inputPath.replace(/(\.[^.]+)$/i, '-clipped$1')
           break
       }
       
@@ -191,6 +215,7 @@ function App() {
       case 'mp3': return t('features.mp3.title')
       case 'compress': return t('features.compress.title')
       case 'convert': return t('features.convert.title')
+      case 'clip': return t('features.clip.title')
     }
   }
   
@@ -199,6 +224,7 @@ function App() {
       case 'mp3': return t('features.mp3.description')
       case 'compress': return t('features.compress.description')
       case 'convert': return t('features.convert.description')
+      case 'clip': return t('features.clip.description')
     }
   }
   
@@ -283,6 +309,19 @@ function App() {
                   `}
                 >
                   {t('features.convert.button')}
+                </button>
+                
+                <button
+                  onClick={() => handleFeatureChange('clip')}
+                  className={`
+                    w-full px-4 py-3 rounded-lg font-semibold text-left transition-all duration-300 transform hover:scale-105
+                    ${selectedFeature === 'clip'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                      : 'bg-white/5 text-white/70 hover:bg-white/10'
+                    }
+                  `}
+                >
+                  {t('features.clip.button')}
                 </button>
               </div>
             </div>
@@ -390,6 +429,42 @@ function App() {
                         {format}
                       </button>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedFile && selectedFeature === 'clip' && (
+                <div className="mb-6 animate-fadeIn">
+                  <label className="block text-white font-semibold mb-3 text-sm uppercase tracking-wide">
+                    {t('ui.clipSettings')}
+                  </label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-white/80 text-sm mb-2">
+                        {t('ui.startTime')}
+                      </label>
+                      <input
+                        type="text"
+                        value={clipStartTime}
+                        onChange={(e) => setClipStartTime(e.target.value)}
+                        placeholder="00:00:10 or 10"
+                        className="w-full px-4 py-3 bg-gray-900/50 border border-purple-500/30 rounded-lg text-white font-mono text-sm focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 transition-all"
+                      />
+                      <p className="text-xs text-white/50 mt-1">{t('ui.timeFormatHint')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-white/80 text-sm mb-2">
+                        {t('ui.endTime')}
+                      </label>
+                      <input
+                        type="text"
+                        value={clipEndTime}
+                        onChange={(e) => setClipEndTime(e.target.value)}
+                        placeholder="00:00:30 or 30"
+                        className="w-full px-4 py-3 bg-gray-900/50 border border-purple-500/30 rounded-lg text-white font-mono text-sm focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 transition-all"
+                      />
+                      <p className="text-xs text-white/50 mt-1">{t('ui.timeFormatHint')}</p>
+                    </div>
                   </div>
                 </div>
               )}

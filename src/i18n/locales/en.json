@@ -18,6 +18,11 @@
       "title": "Format Conversion",
       "description": "Convert between video formats",
       "button": "🔄 Format Conversion"
+    },
+    "clip": {
+      "title": "Video Clip",
+      "description": "Cut video segments with specified time range",
+      "button": "✂️ Video Clip"
     }
   },
   "ui": {
@@ -33,7 +38,11 @@
     "reset": "Reset",
     "outputLog": "Output Log",
     "compressionQuality": "Compression Quality",
-    "targetFormat": "Target Format"
+    "targetFormat": "Target Format",
+    "clipSettings": "Clip Settings",
+    "startTime": "Start Time",
+    "endTime": "End Time",
+    "timeFormatHint": "Format: HH:MM:SS or seconds"
   },
   "quality": {
     "high": "High Quality",

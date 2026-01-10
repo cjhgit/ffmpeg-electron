@@ -18,6 +18,11 @@
       "title": "格式转换",
       "description": "在不同视频格式之间转换",
       "button": "🔄 格式转换"
+    },
+    "clip": {
+      "title": "视频剪辑",
+      "description": "剪切视频片段，保留指定时间范围",
+      "button": "✂️ 视频剪辑"
     }
   },
   "ui": {
@@ -33,7 +38,11 @@
     "reset": "重置",
     "outputLog": "输出日志",
     "compressionQuality": "压缩质量",
-    "targetFormat": "目标格式"
+    "targetFormat": "目标格式",
+    "clipSettings": "剪辑设置",
+    "startTime": "开始时间",
+    "endTime": "结束时间",
+    "timeFormatHint": "格式：HH:MM:SS 或秒数"
   },
   "quality": {
     "high": "高质量",

@@ -1,6 +1,6 @@
 {
   "name": "electron-vite-react",
-  "version": "26.1.2",
+  "version": "26.1.11",
   "productName": "FFmpeg 客户端",
   "main": "dist-electron/main/index.js",
   "description": "Electron Vite React boilerplate.",
