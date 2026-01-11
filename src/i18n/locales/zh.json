@@ -33,9 +33,16 @@
       "title": "视频信息查看",
       "description": "查看视频的详细信息和元数据",
       "button": "ℹ️ 视频信息"
+    },
+    "transcode": {
+      "title": "视频转换",
+      "description": "自定义编码器和参数进行视频转换",
+      "button": "⚙️ 视频转换"
     }
   },
   "ui": {
+    "commonFeatures": "常用功能",
+    "advancedFeatures": "高级功能",
     "featureSelection": "功能选择",
     "selectFile": "选择视频文件",
     "browseFile": "浏览文件",
@@ -73,7 +80,15 @@
     "audioCodec": "音频编码",
     "sampleRate": "采样率",
     "channels": "声道",
-    "audioBitrate": "音频比特率"
+    "audioBitrate": "音频比特率",
+    "outputFormat": "输出格式",
+    "videoCodec": "视频编码器",
+    "copyStream": "复制流",
+    "noReencode": "不重新编码",
+    "crf": "质量参数 (CRF)",
+    "crfHint": "越小质量越高，推荐 18-28",
+    "videoBitrate": "视频比特率 (可选)",
+    "bitrateHint": "例如：2M, 5000k"
   },
   "quality": {
     "high": "高质量",

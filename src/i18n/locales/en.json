@@ -33,9 +33,16 @@
       "title": "Video Information",
       "description": "View detailed video information and metadata",
       "button": "ℹ️ Video Info"
+    },
+    "transcode": {
+      "title": "Video Transcode",
+      "description": "Convert video with custom codecs and parameters",
+      "button": "⚙️ Video Transcode"
     }
   },
   "ui": {
+    "commonFeatures": "Common Features",
+    "advancedFeatures": "Advanced Features",
     "featureSelection": "Feature Selection",
     "selectFile": "Select Video File",
     "browseFile": "Browse File",
@@ -73,7 +80,15 @@
     "audioCodec": "Audio Codec",
     "sampleRate": "Sample Rate",
     "channels": "Channels",
-    "audioBitrate": "Audio Bitrate"
+    "audioBitrate": "Audio Bitrate",
+    "outputFormat": "Output Format",
+    "videoCodec": "Video Codec",
+    "copyStream": "Copy Stream",
+    "noReencode": "No Re-encode",
+    "crf": "Quality (CRF)",
+    "crfHint": "Lower = better quality, recommended 18-28",
+    "videoBitrate": "Video Bitrate (Optional)",
+    "bitrateHint": "e.g.: 2M, 5000k"
   },
   "quality": {
     "high": "High Quality",

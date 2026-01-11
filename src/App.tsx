@@ -30,9 +30,11 @@ interface VideoInfo {
   }>
 }
 
-type FeatureType = 'mp3' | 'compress' | 'convert' | 'clip' | 'resize' | 'info'
+type FeatureType = 'mp3' | 'compress' | 'convert' | 'clip' | 'resize' | 'info' | 'transcode'
 type VideoFormat = 'mp4' | 'avi' | 'mov' | 'mkv' | 'webm' | 'flv'
 type ResolutionType = '1080p' | '720p' | '480p' | '360p'
+type VideoCodec = 'libx264' | 'libx265' | 'libvpx' | 'libvpx-vp9' | 'copy'
+type AudioCodec = 'aac' | 'libmp3lame' | 'libopus' | 'libvorbis' | 'copy'
 
 function App() {
   const { t, i18n } = useTranslation()
@@ -57,6 +59,13 @@ function App() {
   
   // Video resize settings
   const [targetResolution, setTargetResolution] = useState<ResolutionType>('1080p')
+  
+  // Video transcode settings
+  const [transcodeVideoCodec, setTranscodeVideoCodec] = useState<VideoCodec>('libx264')
+  const [transcodeAudioCodec, setTranscodeAudioCodec] = useState<AudioCodec>('aac')
+  const [transcodeFormat, setTranscodeFormat] = useState<VideoFormat>('mp4')
+  const [transcodeBitrate, setTranscodeBitrate] = useState('')
+  const [transcodeCrf, setTranscodeCrf] = useState('23')
   
   // Video info
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null)
@@ -157,13 +166,44 @@ function App() {
           // Use scale filter with -1 to maintain aspect ratio
           cmd = `ffmpeg -y -i "${inputPath}" -vf "scale=-2:${height}" -c:v libx264 -crf 23 -preset medium -c:a aac "${outputPath}"`
           break
+          
+        case 'transcode':
+          // Video transcode with custom codec and settings
+          let transcodeParams = ''
+          
+          // Video codec settings
+          if (transcodeVideoCodec === 'copy') {
+            transcodeParams += '-c:v copy '
+          } else {
+            transcodeParams += `-c:v ${transcodeVideoCodec} `
+            
+            // Add CRF for quality-based encoding (not for copy)
+            if (transcodeCrf && transcodeVideoCodec !== 'copy') {
+              transcodeParams += `-crf ${transcodeCrf} `
+            }
+            
+            // Add bitrate if specified
+            if (transcodeBitrate) {
+              transcodeParams += `-b:v ${transcodeBitrate} `
+            }
+          }
+          
+          // Audio codec settings
+          if (transcodeAudioCodec === 'copy') {
+            transcodeParams += '-c:a copy '
+          } else {
+            transcodeParams += `-c:a ${transcodeAudioCodec} `
+          }
+          
+          cmd = `ffmpeg -y -i "${inputPath}" ${transcodeParams}"${outputPath}"`
+          break
       }
       
       setCommand(cmd)
     } else {
       setCommand('')
     }
-  }, [selectedFile, outputPath, selectedFeature, compressionQuality, targetFormat, clipStartTime, clipEndTime, targetResolution])
+  }, [selectedFile, outputPath, selectedFeature, compressionQuality, targetFormat, clipStartTime, clipEndTime, targetResolution, transcodeVideoCodec, transcodeAudioCodec, transcodeFormat, transcodeBitrate, transcodeCrf])
 
   // Generate unique output path when file or feature is selected
   useEffect(() => {
@@ -189,13 +229,17 @@ function App() {
           break
       }
       
+      if (selectedFeature === 'transcode') {
+        baseOutputPath = inputPath.replace(/\.[^.]+$/i, `-transcoded.${transcodeFormat}`)
+      }
+      
       generateUniqueFilename(baseOutputPath).then(uniquePath => {
         setOutputPath(uniquePath)
       })
     } else {
       setOutputPath('')
     }
-  }, [selectedFile, selectedFeature, targetFormat, targetResolution])
+  }, [selectedFile, selectedFeature, targetFormat, targetResolution, transcodeFormat])
 
   // Listen for FFmpeg output
   useEffect(() => {
@@ -279,6 +323,7 @@ function App() {
       case 'clip': return t('features.clip.title')
       case 'resize': return t('features.resize.title')
       case 'info': return t('features.info.title')
+      case 'transcode': return t('features.transcode.title')
     }
   }
   
@@ -290,6 +335,7 @@ function App() {
       case 'clip': return t('features.clip.description')
       case 'resize': return t('features.resize.description')
       case 'info': return t('features.info.description')
+      case 'transcode': return t('features.transcode.description')
     }
   }
   
@@ -373,6 +419,28 @@ function App() {
     return `${rate} bps`
   }
 
+  const formatCodecName = (codecName: string) => {
+    const codecMap: { [key: string]: string } = {
+      'hevc': 'HEVC (H.265)',
+      'h264': 'H.264',
+      'avc': 'AVC (H.264)',
+      'vp8': 'VP8',
+      'vp9': 'VP9',
+      'av1': 'AV1',
+      'mpeg4': 'MPEG-4',
+      'mpeg2video': 'MPEG-2',
+      'aac': 'AAC',
+      'mp3': 'MP3',
+      'opus': 'Opus',
+      'vorbis': 'Vorbis',
+      'flac': 'FLAC',
+      'pcm_s16le': 'PCM'
+    }
+    
+    const lowerCodec = codecName.toLowerCase()
+    return codecMap[lowerCodec] || codecName.toUpperCase()
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-8">
       <div className="max-w-7xl mx-auto">
@@ -398,7 +466,7 @@ function App() {
           {/* Left Sidebar - Feature Selection */}
           <div className="w-64 flex-shrink-0">
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20 sticky top-8">
-              <h2 className="text-white font-bold text-lg mb-4 uppercase tracking-wide">{t('ui.featureSelection')}</h2>
+              <h2 className="text-white font-bold text-lg mb-4 uppercase tracking-wide">{t('ui.commonFeatures')}</h2>
               <div className="space-y-3">
                 <button
                   onClick={() => handleFeatureChange('mp3')}
@@ -477,6 +545,25 @@ function App() {
                 >
                   {t('features.info.button')}
                 </button>
+              </div>
+              
+              {/* Advanced Features Section */}
+              <div className="mt-8">
+                <h2 className="text-white font-bold text-lg mb-4 uppercase tracking-wide">{t('ui.advancedFeatures')}</h2>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => handleFeatureChange('transcode')}
+                    className={`
+                      w-full px-4 py-3 rounded-lg font-semibold text-left transition-all duration-300 transform hover:scale-105
+                      ${selectedFeature === 'transcode'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                        : 'bg-white/5 text-white/70 hover:bg-white/10'
+                      }
+                    `}
+                  >
+                    {t('features.transcode.button')}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -654,6 +741,121 @@ function App() {
                   <p className="text-xs text-white/60 mt-3">
                     {t('ui.resizeHint')}
                   </p>
+                </div>
+              )}
+
+              {selectedFile && selectedFeature === 'transcode' && (
+                <div className="mb-6 animate-fadeIn space-y-6">
+                  {/* Output Format Selection */}
+                  <div>
+                    <label className="block text-white font-semibold mb-3 text-sm uppercase tracking-wide">
+                      {t('ui.outputFormat')}
+                    </label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {(['mp4', 'avi', 'mov', 'mkv', 'webm', 'flv'] as VideoFormat[]).map(format => (
+                        <button
+                          key={format}
+                          onClick={() => setTranscodeFormat(format)}
+                          className={`
+                            px-4 py-3 rounded-lg font-semibold uppercase transition-all duration-300 transform hover:scale-105
+                            ${transcodeFormat === format
+                              ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                              : 'bg-white/10 text-white/70 hover:bg-white/20'
+                            }
+                          `}
+                        >
+                          {format}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Video Codec Selection */}
+                  <div>
+                    <label className="block text-white font-semibold mb-3 text-sm uppercase tracking-wide">
+                      {t('ui.videoCodec')}
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {(['libx264', 'libx265', 'libvpx', 'libvpx-vp9', 'copy'] as VideoCodec[]).map(codec => (
+                        <button
+                          key={codec}
+                          onClick={() => setTranscodeVideoCodec(codec)}
+                          className={`
+                            px-4 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105
+                            ${transcodeVideoCodec === codec
+                              ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
+                              : 'bg-white/10 text-white/70 hover:bg-white/20'
+                            }
+                          `}
+                        >
+                          <div className="text-sm">{codec === 'copy' ? t('ui.copyStream') : codec.toUpperCase()}</div>
+                          <div className="text-xs mt-1 opacity-80">
+                            {codec === 'libx264' && 'H.264 (通用)'}
+                            {codec === 'libx265' && 'H.265 (高效)'}
+                            {codec === 'libvpx' && 'VP8'}
+                            {codec === 'libvpx-vp9' && 'VP9'}
+                            {codec === 'copy' && t('ui.noReencode')}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Audio Codec Selection */}
+                  <div>
+                    <label className="block text-white font-semibold mb-3 text-sm uppercase tracking-wide">
+                      {t('ui.audioCodec')}
+                    </label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {(['aac', 'libmp3lame', 'libopus', 'libvorbis', 'copy'] as AudioCodec[]).map(codec => (
+                        <button
+                          key={codec}
+                          onClick={() => setTranscodeAudioCodec(codec)}
+                          className={`
+                            px-4 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105
+                            ${transcodeAudioCodec === codec
+                              ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
+                              : 'bg-white/10 text-white/70 hover:bg-white/20'
+                            }
+                          `}
+                        >
+                          <div className="text-sm">{codec === 'copy' ? t('ui.copyStream') : codec === 'libmp3lame' ? 'MP3' : codec.toUpperCase()}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Quality/Bitrate Settings */}
+                  {transcodeVideoCodec !== 'copy' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-white/80 text-sm mb-2">
+                          {t('ui.crf')} (0-51)
+                        </label>
+                        <input
+                          type="text"
+                          value={transcodeCrf}
+                          onChange={(e) => setTranscodeCrf(e.target.value)}
+                          placeholder="23"
+                          className="w-full px-4 py-3 bg-gray-900/50 border border-purple-500/30 rounded-lg text-white font-mono text-sm focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 transition-all"
+                        />
+                        <p className="text-xs text-white/50 mt-1">{t('ui.crfHint')}</p>
+                      </div>
+                      <div>
+                        <label className="block text-white/80 text-sm mb-2">
+                          {t('ui.videoBitrate')}
+                        </label>
+                        <input
+                          type="text"
+                          value={transcodeBitrate}
+                          onChange={(e) => setTranscodeBitrate(e.target.value)}
+                          placeholder="2M"
+                          className="w-full px-4 py-3 bg-gray-900/50 border border-purple-500/30 rounded-lg text-white font-mono text-sm focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 transition-all"
+                        />
+                        <p className="text-xs text-white/50 mt-1">{t('ui.bitrateHint')}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -855,7 +1057,7 @@ function App() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="bg-black/20 rounded-lg p-3">
                           <p className="text-purple-200/70 text-xs mb-1">{t('ui.codec')}</p>
-                          <p className="text-white font-mono text-sm">{stream.codec_name.toUpperCase()}</p>
+                          <p className="text-white font-mono text-sm">{formatCodecName(stream.codec_name)}</p>
                         </div>
                         <div className="bg-black/20 rounded-lg p-3">
                           <p className="text-purple-200/70 text-xs mb-1">{t('ui.resolution')}</p>
@@ -890,7 +1092,7 @@ function App() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="bg-black/20 rounded-lg p-3">
                           <p className="text-green-200/70 text-xs mb-1">{t('ui.audioCodec')}</p>
-                          <p className="text-white font-mono text-sm">{stream.codec_name.toUpperCase()}</p>
+                          <p className="text-white font-mono text-sm">{formatCodecName(stream.codec_name)}</p>
                         </div>
                         <div className="bg-black/20 rounded-lg p-3">
                           <p className="text-green-200/70 text-xs mb-1">{t('ui.sampleRate')}</p>
