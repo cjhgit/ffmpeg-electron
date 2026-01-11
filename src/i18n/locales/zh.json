@@ -88,7 +88,9 @@
     "crf": "质量参数 (CRF)",
     "crfHint": "越小质量越高，推荐 18-28",
     "videoBitrate": "视频比特率 (可选)",
-    "bitrateHint": "例如：2M, 5000k"
+    "bitrateHint": "例如：2M, 5000k",
+    "rawOutput": "FFmpeg 原始输出",
+    "copyRawOutput": "复制原始输出"
   },
   "quality": {
     "high": "高质量",

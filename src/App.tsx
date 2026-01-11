@@ -71,6 +71,8 @@ function App() {
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [ffprobeCommand, setFfprobeCommand] = useState('')
+  const [rawVideoInfo, setRawVideoInfo] = useState<string>('')
+  const [isRawInfoCopied, setIsRawInfoCopied] = useState(false)
 
   // Generate unique filename if file already exists
   const generateUniqueFilename = async (basePath: string): Promise<string> => {
@@ -177,8 +179,8 @@ function App() {
           } else {
             transcodeParams += `-c:v ${transcodeVideoCodec} `
             
-            // Add CRF for quality-based encoding (not for copy)
-            if (transcodeCrf && transcodeVideoCodec !== 'copy') {
+            // Add CRF for quality-based encoding
+            if (transcodeCrf) {
               transcodeParams += `-crf ${transcodeCrf} `
             }
             
@@ -304,6 +306,8 @@ function App() {
     setIsCopied(false)
     setVideoInfo(null)
     setFfprobeCommand('')
+    setRawVideoInfo('')
+    setIsRawInfoCopied(false)
   }
   
   const handleFeatureChange = (feature: FeatureType) => {
@@ -313,6 +317,8 @@ function App() {
     setIsCopied(false)
     setVideoInfo(null)
     setFfprobeCommand('')
+    setRawVideoInfo('')
+    setIsRawInfoCopied(false)
   }
   
   const getFeatureTitle = () => {
@@ -361,12 +367,20 @@ function App() {
     
     setIsAnalyzing(true)
     setVideoInfo(null)
+    setRawVideoInfo('')
     setStatus('idle')
     
     try {
-      const result = await window.ipcRenderer.invoke('get-video-info', selectedFile.path) as { success: boolean; data: VideoInfo }
+      const result = await window.ipcRenderer.invoke('get-video-info', selectedFile.path) as { success: boolean; data: VideoInfo; raw?: string }
       if (result.success) {
         setVideoInfo(result.data)
+        // Store raw JSON output
+        if (result.raw) {
+          setRawVideoInfo(result.raw)
+        } else {
+          // If raw data is not provided, stringify the parsed data
+          setRawVideoInfo(JSON.stringify(result.data, null, 2))
+        }
         setStatus('success')
       }
     } catch (error: any) {
@@ -439,6 +453,18 @@ function App() {
     
     const lowerCodec = codecName.toLowerCase()
     return codecMap[lowerCodec] || codecName.toUpperCase()
+  }
+
+  const handleCopyRawInfo = async () => {
+    if (!rawVideoInfo) return
+    
+    try {
+      await navigator.clipboard.writeText(rawVideoInfo)
+      setIsRawInfoCopied(true)
+      setTimeout(() => setIsRawInfoCopied(false), 2000)
+    } catch (error) {
+      console.error('复制失败:', error)
+    }
   }
 
   return (
@@ -1111,6 +1137,42 @@ function App() {
                       </div>
                     </div>
                   ))}
+
+                  {/* Raw FFmpeg Output */}
+                  {rawVideoInfo && (
+                    <div className="mt-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="block text-white font-semibold text-sm uppercase tracking-wide">
+                          {t('ui.rawOutput')}
+                        </label>
+                        <button
+                          onClick={handleCopyRawInfo}
+                          className="px-4 py-2 bg-blue-500/80 hover:bg-blue-600 text-white text-sm rounded-lg transition-all duration-200 flex items-center gap-2"
+                        >
+                          {isRawInfoCopied ? (
+                            <>
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              {t('ui.copied')}
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                              {t('ui.copyRawOutput')}
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <div className="bg-gray-900/70 rounded-lg p-4 max-h-96 overflow-y-auto border border-purple-500/30">
+                        <pre className="text-green-300 text-xs font-mono whitespace-pre-wrap">
+                          {rawVideoInfo}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

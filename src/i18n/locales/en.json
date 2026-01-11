@@ -88,7 +88,9 @@
     "crf": "Quality (CRF)",
     "crfHint": "Lower = better quality, recommended 18-28",
     "videoBitrate": "Video Bitrate (Optional)",
-    "bitrateHint": "e.g.: 2M, 5000k"
+    "bitrateHint": "e.g.: 2M, 5000k",
+    "rawOutput": "FFmpeg Raw Output",
+    "copyRawOutput": "Copy Raw Output"
   },
   "quality": {
     "high": "High Quality",

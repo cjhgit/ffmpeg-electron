@@ -330,7 +330,8 @@ ipcMain.handle('get-video-info', async (event, filePath: string) => {
       if (code === 0) {
         try {
           const info = JSON.parse(stdout)
-          resolve({ success: true, data: info })
+          // Return both parsed data and raw JSON string
+          resolve({ success: true, data: info, raw: stdout })
         } catch (error) {
           reject({ success: false, error: 'Failed to parse video information' })
         }
