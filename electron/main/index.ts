@@ -206,6 +206,29 @@ function getFfmpegPath(): string {
   return ffmpegPath
 }
 
+// Helper function to get FFprobe binary path
+function getFfprobePath(): string {
+  // In development, use system ffprobe
+  if (VITE_DEV_SERVER_URL) {
+    return 'ffprobe'
+  }
+  
+  // In production (packaged app), use bundled ffprobe
+  const platform = process.platform
+  let ffprobeName = 'ffprobe'
+  
+  if (platform === 'win32') {
+    ffprobeName = 'ffprobe.exe'
+  }
+  
+  const resourcesPath = process.resourcesPath || path.join(process.env.APP_ROOT!, 'resources')
+  const ffprobePath = path.join(resourcesPath, 'bin', ffprobeName)
+  
+  console.log('FFprobe path:', ffprobePath)
+  
+  return ffprobePath
+}
+
 // FFmpeg execution handler
 ipcMain.handle('execute-ffmpeg', async (event, command: string) => {
   const { spawn } = await import('node:child_process')
@@ -257,6 +280,67 @@ ipcMain.handle('execute-ffmpeg', async (event, command: string) => {
     
     ffmpeg.on('error', (error) => {
       reject({ success: false, error: error.message, path: ffmpegPath })
+    })
+  })
+})
+
+// FFprobe execution handler for getting video information
+ipcMain.handle('get-video-info', async (event, filePath: string) => {
+  const { spawn } = await import('node:child_process')
+  const fs = await import('node:fs')
+  
+  return new Promise((resolve, reject) => {
+    const ffprobePath = getFfprobePath()
+    
+    // ffprobe arguments to get JSON output with all stream information
+    const args = [
+      '-v', 'quiet',
+      '-print_format', 'json',
+      '-show_format',
+      '-show_streams',
+      filePath
+    ]
+    
+    console.log('FFprobe path:', ffprobePath)
+    console.log('FFprobe args:', args)
+    
+    // Check if ffprobe exists (in packaged app)
+    if (!VITE_DEV_SERVER_URL && !fs.existsSync(ffprobePath)) {
+      reject({ 
+        success: false, 
+        error: `FFprobe not found at: ${ffprobePath}. Please ensure FFprobe is bundled with the app.` 
+      })
+      return
+    }
+    
+    const ffprobe = spawn(ffprobePath, args)
+    
+    let stdout = ''
+    let stderr = ''
+    
+    ffprobe.stdout.on('data', (data) => {
+      stdout += data.toString()
+    })
+    
+    ffprobe.stderr.on('data', (data) => {
+      stderr += data.toString()
+    })
+    
+    ffprobe.on('close', (code) => {
+      if (code === 0) {
+        try {
+          const info = JSON.parse(stdout)
+          resolve({ success: true, data: info })
+        } catch (error) {
+          reject({ success: false, error: 'Failed to parse video information' })
+        }
+      } else {
+        reject({ success: false, code, stderr })
+      }
+    })
+    
+    ffprobe.on('error', (error) => {
+      reject({ success: false, error: error.message, path: ffprobePath })
     })
   })
 })

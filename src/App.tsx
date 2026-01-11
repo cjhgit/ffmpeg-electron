@@ -7,7 +7,30 @@ interface FFmpegOutput {
   data: string
 }
 
-type FeatureType = 'mp3' | 'compress' | 'convert' | 'clip' | 'resize'
+interface VideoInfo {
+  format: {
+    filename: string
+    format_name: string
+    format_long_name: string
+    duration: string
+    size: string
+    bit_rate: string
+  }
+  streams: Array<{
+    codec_type: string
+    codec_name: string
+    codec_long_name: string
+    width?: number
+    height?: number
+    r_frame_rate?: string
+    display_aspect_ratio?: string
+    sample_rate?: string
+    channels?: number
+    bit_rate?: string
+  }>
+}
+
+type FeatureType = 'mp3' | 'compress' | 'convert' | 'clip' | 'resize' | 'info'
 type VideoFormat = 'mp4' | 'avi' | 'mov' | 'mkv' | 'webm' | 'flv'
 type ResolutionType = '1080p' | '720p' | '480p' | '360p'
 
@@ -34,6 +57,11 @@ function App() {
   
   // Video resize settings
   const [targetResolution, setTargetResolution] = useState<ResolutionType>('1080p')
+  
+  // Video info
+  const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [ffprobeCommand, setFfprobeCommand] = useState('')
 
   // Generate unique filename if file already exists
   const generateUniqueFilename = async (basePath: string): Promise<string> => {
@@ -66,7 +94,18 @@ function App() {
 
   // Generate FFmpeg command when file, output path, or settings change
   useEffect(() => {
-    if (selectedFile && outputPath) {
+    if (selectedFeature === 'info') {
+      // For info feature, generate ffprobe command
+      if (selectedFile) {
+        const inputPath = selectedFile.path
+        const cmd = `ffprobe -v quiet -print_format json -show_format -show_streams "${inputPath}"`
+        setFfprobeCommand(cmd)
+        setCommand(cmd)
+      } else {
+        setFfprobeCommand('')
+        setCommand('')
+      }
+    } else if (selectedFile && outputPath) {
       console.log('selectedFile', selectedFile)
       const inputPath = selectedFile.path
       let cmd = ''
@@ -219,6 +258,8 @@ function App() {
     setOutput([])
     setStatus('idle')
     setIsCopied(false)
+    setVideoInfo(null)
+    setFfprobeCommand('')
   }
   
   const handleFeatureChange = (feature: FeatureType) => {
@@ -226,6 +267,8 @@ function App() {
     setStatus('idle')
     setOutput([])
     setIsCopied(false)
+    setVideoInfo(null)
+    setFfprobeCommand('')
   }
   
   const getFeatureTitle = () => {
@@ -235,6 +278,7 @@ function App() {
       case 'convert': return t('features.convert.title')
       case 'clip': return t('features.clip.title')
       case 'resize': return t('features.resize.title')
+      case 'info': return t('features.info.title')
     }
   }
   
@@ -245,6 +289,7 @@ function App() {
       case 'convert': return t('features.convert.description')
       case 'clip': return t('features.clip.description')
       case 'resize': return t('features.resize.description')
+      case 'info': return t('features.info.description')
     }
   }
   
@@ -263,6 +308,69 @@ function App() {
     } catch (error) {
       console.error('复制失败:', error)
     }
+  }
+
+  const handleAnalyzeVideo = async () => {
+    if (!selectedFile || !window.ipcRenderer) return
+    
+    setIsAnalyzing(true)
+    setVideoInfo(null)
+    setStatus('idle')
+    
+    try {
+      const result = await window.ipcRenderer.invoke('get-video-info', selectedFile.path) as { success: boolean; data: VideoInfo }
+      if (result.success) {
+        setVideoInfo(result.data)
+        setStatus('success')
+      }
+    } catch (error: any) {
+      setStatus('error')
+      console.error('视频分析失败:', error)
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  const formatFileSize = (bytes: string) => {
+    const size = parseInt(bytes)
+    if (isNaN(size)) return bytes
+    
+    const units = ['B', 'KB', 'MB', 'GB']
+    let unitIndex = 0
+    let fileSize = size
+    
+    while (fileSize >= 1024 && unitIndex < units.length - 1) {
+      fileSize /= 1024
+      unitIndex++
+    }
+    
+    return `${fileSize.toFixed(2)} ${units[unitIndex]}`
+  }
+
+  const formatDuration = (seconds: string) => {
+    const duration = parseFloat(seconds)
+    if (isNaN(duration)) return seconds
+    
+    const hours = Math.floor(duration / 3600)
+    const minutes = Math.floor((duration % 3600) / 60)
+    const secs = Math.floor(duration % 60)
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    }
+    return `${minutes}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const formatBitrate = (bitrate: string) => {
+    const rate = parseInt(bitrate)
+    if (isNaN(rate)) return bitrate
+    
+    if (rate >= 1000000) {
+      return `${(rate / 1000000).toFixed(2)} Mbps`
+    } else if (rate >= 1000) {
+      return `${(rate / 1000).toFixed(2)} Kbps`
+    }
+    return `${rate} bps`
   }
 
   return (
@@ -355,6 +463,19 @@ function App() {
                   `}
                 >
                   {t('features.resize.button')}
+                </button>
+                
+                <button
+                  onClick={() => handleFeatureChange('info')}
+                  className={`
+                    w-full px-4 py-3 rounded-lg font-semibold text-left transition-all duration-300 transform hover:scale-105
+                    ${selectedFeature === 'info'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                      : 'bg-white/5 text-white/70 hover:bg-white/10'
+                    }
+                  `}
+                >
+                  {t('features.info.button')}
                 </button>
               </div>
             </div>
@@ -536,8 +657,8 @@ function App() {
                 </div>
               )}
 
-              {/* Output Path Input */}
-              {selectedFile && (
+              {/* Output Path Input - Not shown for info feature */}
+              {selectedFile && selectedFeature !== 'info' && (
                 <div className="mb-6 animate-fadeIn">
                   <label className="block text-white font-semibold mb-2 text-sm uppercase tracking-wide">
                     {t('ui.outputPath')}
@@ -589,48 +710,90 @@ function App() {
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-4 mb-6">
-                <button
-                  onClick={handleExecute}
-                  disabled={!command || isExecuting}
-                  className={`
-                    flex-1 px-6 py-4 rounded-lg font-bold text-lg transition-all duration-300 transform
-                    ${command && !isExecuting
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 hover:scale-105 shadow-lg hover:shadow-green-500/50'
-                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                    }
-                  `}
-                >
-                  {isExecuting ? (
-                    <span className="flex items-center justify-center">
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      {t('ui.executing')}
-                    </span>
-                  ) : (
-                    t('ui.execute')
-                  )}
-                </button>
-                
-                <button
-                  onClick={handleReset}
-                  disabled={isExecuting}
-                  className={`
-                    px-6 py-4 rounded-lg font-bold text-lg transition-all duration-300 transform
-                    ${!isExecuting
-                      ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600 hover:scale-105 shadow-lg hover:shadow-red-500/50'
-                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                    }
-                  `}
-                >
-                  {t('ui.reset')}
-                </button>
-              </div>
+              {selectedFeature === 'info' ? (
+                <div className="flex gap-4 mb-6">
+                  <button
+                    onClick={handleAnalyzeVideo}
+                    disabled={!selectedFile || isAnalyzing}
+                    className={`
+                      flex-1 px-6 py-4 rounded-lg font-bold text-lg transition-all duration-300 transform
+                      ${selectedFile && !isAnalyzing
+                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600 hover:scale-105 shadow-lg hover:shadow-blue-500/50'
+                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                      }
+                    `}
+                  >
+                    {isAnalyzing ? (
+                      <span className="flex items-center justify-center">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {t('ui.analyzing')}
+                      </span>
+                    ) : (
+                      t('ui.analyze')
+                    )}
+                  </button>
+                  
+                  <button
+                    onClick={handleReset}
+                    disabled={isAnalyzing}
+                    className={`
+                      px-6 py-4 rounded-lg font-bold text-lg transition-all duration-300 transform
+                      ${!isAnalyzing
+                        ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600 hover:scale-105 shadow-lg hover:shadow-red-500/50'
+                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                      }
+                    `}
+                  >
+                    {t('ui.reset')}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-4 mb-6">
+                  <button
+                    onClick={handleExecute}
+                    disabled={!command || isExecuting}
+                    className={`
+                      flex-1 px-6 py-4 rounded-lg font-bold text-lg transition-all duration-300 transform
+                      ${command && !isExecuting
+                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 hover:scale-105 shadow-lg hover:shadow-green-500/50'
+                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                      }
+                    `}
+                  >
+                    {isExecuting ? (
+                      <span className="flex items-center justify-center">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {t('ui.executing')}
+                      </span>
+                    ) : (
+                      t('ui.execute')
+                    )}
+                  </button>
+                  
+                  <button
+                    onClick={handleReset}
+                    disabled={isExecuting}
+                    className={`
+                      px-6 py-4 rounded-lg font-bold text-lg transition-all duration-300 transform
+                      ${!isExecuting
+                        ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600 hover:scale-105 shadow-lg hover:shadow-red-500/50'
+                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                      }
+                    `}
+                  >
+                    {t('ui.reset')}
+                  </button>
+                </div>
+              )}
 
               {/* Status Indicator */}
-              {status !== 'idle' && (
+              {status !== 'idle' && !videoInfo && (
                 <div className={`
                   p-4 rounded-lg mb-6 animate-fadeIn
                   ${status === 'success' ? 'bg-green-500/20 border border-green-500/50' : 'bg-red-500/20 border border-red-500/50'}
@@ -638,6 +801,114 @@ function App() {
                   <p className={`font-semibold ${status === 'success' ? 'text-green-300' : 'text-red-300'}`}>
                     {status === 'success' ? t('status.success') : t('status.error')}
                   </p>
+                </div>
+              )}
+
+              {/* Video Information Display */}
+              {selectedFeature === 'info' && videoInfo && (
+                <div className="mb-6 animate-fadeIn">
+                  <label className="block text-white font-semibold mb-4 text-sm uppercase tracking-wide">
+                    {t('ui.videoInfo')}
+                  </label>
+                  
+                  {/* Basic Information */}
+                  <div className="bg-gradient-to-br from-blue-900/40 to-purple-900/40 rounded-lg p-6 mb-4 border border-blue-500/30">
+                    <h3 className="text-blue-300 font-bold text-lg mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {t('ui.basicInfo')}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-black/20 rounded-lg p-3">
+                        <p className="text-blue-200/70 text-xs mb-1">{t('ui.fileName')}</p>
+                        <p className="text-white font-mono text-sm break-all">{selectedFile?.name}</p>
+                      </div>
+                      <div className="bg-black/20 rounded-lg p-3">
+                        <p className="text-blue-200/70 text-xs mb-1">{t('ui.fileSize')}</p>
+                        <p className="text-white font-mono text-sm">{formatFileSize(videoInfo.format.size)}</p>
+                      </div>
+                      <div className="bg-black/20 rounded-lg p-3">
+                        <p className="text-blue-200/70 text-xs mb-1">{t('ui.duration')}</p>
+                        <p className="text-white font-mono text-sm">{formatDuration(videoInfo.format.duration)}</p>
+                      </div>
+                      <div className="bg-black/20 rounded-lg p-3">
+                        <p className="text-blue-200/70 text-xs mb-1">{t('ui.bitrate')}</p>
+                        <p className="text-white font-mono text-sm">{formatBitrate(videoInfo.format.bit_rate)}</p>
+                      </div>
+                      <div className="bg-black/20 rounded-lg p-3 col-span-2">
+                        <p className="text-blue-200/70 text-xs mb-1">{t('ui.format')}</p>
+                        <p className="text-white font-mono text-sm">{videoInfo.format.format_long_name}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Video Stream Information */}
+                  {videoInfo.streams.filter(s => s.codec_type === 'video').map((stream, index) => (
+                    <div key={`video-${index}`} className="bg-gradient-to-br from-purple-900/40 to-pink-900/40 rounded-lg p-6 mb-4 border border-purple-500/30">
+                      <h3 className="text-purple-300 font-bold text-lg mb-4 flex items-center">
+                        <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        {t('ui.videoStream')} {videoInfo.streams.filter(s => s.codec_type === 'video').length > 1 ? `#${index + 1}` : ''}
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-black/20 rounded-lg p-3">
+                          <p className="text-purple-200/70 text-xs mb-1">{t('ui.codec')}</p>
+                          <p className="text-white font-mono text-sm">{stream.codec_name.toUpperCase()}</p>
+                        </div>
+                        <div className="bg-black/20 rounded-lg p-3">
+                          <p className="text-purple-200/70 text-xs mb-1">{t('ui.resolution')}</p>
+                          <p className="text-white font-mono text-sm">{stream.width} × {stream.height}</p>
+                        </div>
+                        <div className="bg-black/20 rounded-lg p-3">
+                          <p className="text-purple-200/70 text-xs mb-1">{t('ui.frameRate')}</p>
+                          <p className="text-white font-mono text-sm">
+                            {stream.r_frame_rate ? (() => {
+                              const [num, den] = stream.r_frame_rate.split('/').map(Number)
+                              return `${(num / den).toFixed(2)} fps`
+                            })() : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="bg-black/20 rounded-lg p-3">
+                          <p className="text-purple-200/70 text-xs mb-1">{t('ui.aspectRatio')}</p>
+                          <p className="text-white font-mono text-sm">{stream.display_aspect_ratio || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Audio Stream Information */}
+                  {videoInfo.streams.filter(s => s.codec_type === 'audio').map((stream, index) => (
+                    <div key={`audio-${index}`} className="bg-gradient-to-br from-green-900/40 to-teal-900/40 rounded-lg p-6 mb-4 border border-green-500/30">
+                      <h3 className="text-green-300 font-bold text-lg mb-4 flex items-center">
+                        <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                        </svg>
+                        {t('ui.audioStream')} {videoInfo.streams.filter(s => s.codec_type === 'audio').length > 1 ? `#${index + 1}` : ''}
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-black/20 rounded-lg p-3">
+                          <p className="text-green-200/70 text-xs mb-1">{t('ui.audioCodec')}</p>
+                          <p className="text-white font-mono text-sm">{stream.codec_name.toUpperCase()}</p>
+                        </div>
+                        <div className="bg-black/20 rounded-lg p-3">
+                          <p className="text-green-200/70 text-xs mb-1">{t('ui.sampleRate')}</p>
+                          <p className="text-white font-mono text-sm">{stream.sample_rate ? `${(parseInt(stream.sample_rate) / 1000).toFixed(1)} kHz` : 'N/A'}</p>
+                        </div>
+                        <div className="bg-black/20 rounded-lg p-3">
+                          <p className="text-green-200/70 text-xs mb-1">{t('ui.channels')}</p>
+                          <p className="text-white font-mono text-sm">
+                            {stream.channels === 1 ? 'Mono' : stream.channels === 2 ? 'Stereo' : `${stream.channels} channels`}
+                          </p>
+                        </div>
+                        <div className="bg-black/20 rounded-lg p-3">
+                          <p className="text-green-200/70 text-xs mb-1">{t('ui.audioBitrate')}</p>
+                          <p className="text-white font-mono text-sm">{stream.bit_rate ? formatBitrate(stream.bit_rate) : 'N/A'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 

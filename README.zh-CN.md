@@ -76,10 +76,45 @@ export default {
 ```
 -->
 
+## 🎬 FFmpeg 功能
+
+本应用是一个功能丰富的 FFmpeg 客户端，提供以下功能：
+
+### 核心功能
+1. **🎵 MP4 转 MP3** - 从视频文件中提取音频
+2. **📦 视频压缩** - 减小视频文件大小（支持高/中/低质量）
+3. **🔄 格式转换** - 在不同视频格式之间转换（MP4、AVI、MOV、MKV、WebM、FLV）
+4. **✂️ 视频剪辑** - 剪切视频片段，保留指定时间范围
+5. **📐 修改分辨率** - 调整视频分辨率（1080p、720p、480p、360p）
+6. **ℹ️ 视频信息** - 查看视频的详细信息和元数据 ✨ 新功能
+
+### 视频信息功能特性
+- 📊 基本信息：文件名、大小、时长、比特率、格式
+- 🎥 视频流：编码、分辨率、帧率、宽高比
+- 🔊 音频流：编码、采样率、声道、比特率
+- 🌈 美观的界面设计，信息分类清晰
+- 🌍 支持中英文双语
+
+### 快速开始
+```bash
+# 安装 FFmpeg（开发环境）
+brew install ffmpeg  # macOS
+
+# 启动应用
+npm run dev
+```
+
+### 相关文档
+- [FFmpeg 设置说明](FFMPEG_SETUP.md)
+- [视频信息功能指南](VIDEO_INFO_GUIDE.md)
+- [快速开始指南](QUICK_START_VIDEO_INFO.md)
+- [更改摘要](CHANGES_SUMMARY.md)
+
 ## 🔧 额外的功能
 
 1. Electron 自动更新 👉 [阅读文档](src/components/update/README.zh-CN.md)
-2. Playwright 测试
+2. 国际化支持 (i18n) 👉 [阅读文档](I18N_GUIDE.md)
+3. Playwright 测试
 
 ## ❔ FAQ
 

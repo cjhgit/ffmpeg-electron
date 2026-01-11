@@ -28,6 +28,11 @@
       "title": "Resize Resolution",
       "description": "Adjust video resolution while maintaining aspect ratio",
       "button": "📐 Resize Resolution"
+    },
+    "info": {
+      "title": "Video Information",
+      "description": "View detailed video information and metadata",
+      "button": "ℹ️ Video Info"
     }
   },
   "ui": {
@@ -49,7 +54,26 @@
     "startTime": "Start Time",
     "endTime": "End Time",
     "timeFormatHint": "Format: HH:MM:SS or seconds",
-    "resizeHint": "* Width will be automatically adjusted to maintain original aspect ratio"
+    "resizeHint": "* Width will be automatically adjusted to maintain original aspect ratio",
+    "videoInfo": "Video Information",
+    "analyzing": "Analyzing...",
+    "analyze": "Analyze Video",
+    "basicInfo": "Basic Information",
+    "videoStream": "Video Stream",
+    "audioStream": "Audio Stream",
+    "fileName": "File Name",
+    "fileSize": "File Size",
+    "duration": "Duration",
+    "bitrate": "Bitrate",
+    "format": "Format",
+    "codec": "Codec",
+    "resolution": "Resolution",
+    "frameRate": "Frame Rate",
+    "aspectRatio": "Aspect Ratio",
+    "audioCodec": "Audio Codec",
+    "sampleRate": "Sample Rate",
+    "channels": "Channels",
+    "audioBitrate": "Audio Bitrate"
   },
   "quality": {
     "high": "High Quality",
